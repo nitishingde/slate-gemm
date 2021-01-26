@@ -38,7 +38,7 @@ int parse_args(int argc, char* argv[]);
 //------------------------------------------------------------------------------
 // eventually accept all params: https://icl.bitbucket.io/slate/group__enum.html#gac97a2c5045464e6949b9a65a059b196a
 template<typename scalar_t>
-void test_gemm_work(Params& params)
+double test_gemm_work(Params& params)
 {
     using real_t = blas::real_type<scalar_t>;
     using slate::Norm;
@@ -215,6 +215,8 @@ void test_gemm_work(Params& params)
 	    gflops = gflop / time_tst;
     }
 
+    
+
     #ifdef PIN_MATRICES
     cuerror = cudaHostUnregister(&A_tst[0]);
     cuerror = cudaHostUnregister(&B_tst[0]);
@@ -223,6 +225,8 @@ void test_gemm_work(Params& params)
 
     Cblacs_gridexit(ictxt);
     //Cblacs_exit(1) does not handle re-entering
+
+   return gflops;
 }
 
 // ----------------------------------------------------------------------------- //
@@ -288,28 +292,33 @@ int main(int argc, char* argv[])
         assert((params.p * params.q) == mpi_size);
         params.alpha = alpha;
         params.beta = beta;
+        double gflops;
  
         if (is_float_t) {
             params.type = slate::Type::FLOAT;
-            test_gemm_work<float>(params);
+            gflops = test_gemm_work<float>(params);
         }
         else if (is_double_t) {
             params.type = slate::Type::DOUBLE;
-            test_gemm_work<double>(params);
+            gflops = test_gemm_work<double>(params);
         }
         else if (is_complex_float_t) {
             params.type = slate::Type::COMPLEX_FLOAT;
-            test_gemm_work<std::complex<float>>(params);
+            gflops = test_gemm_work<std::complex<float>>(params);
         }
         else if (is_complex_double_t) {
             params.type = slate::Type::COMPLEX_DOUBLE;
-            test_gemm_work<std::complex<double>>(params);
+            gflops = test_gemm_work<std::complex<double>>(params);
         }
         else { 
             params.type = slate::Type::DOUBLE;
-            test_gemm_work<double>(params);
-        }
+            gflops = test_gemm_work<double>(params);
+	}
 
+	double pe_gflops = 0.0;
+	MPI_Reduce(&gflops, &pe_gflops, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
+	if (print)
+		std::cout << "GFlops: " << pe_gflops << std::endl;
     }
     catch (const std::exception& ex) {
         msg = ex.what();
