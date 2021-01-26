@@ -33,6 +33,8 @@ static bool is_complex_float_t = false;
 static bool is_complex_double_t = false;
 static double alpha, beta;
 
+int parse_args(int argc, char* argv[]);
+
 //------------------------------------------------------------------------------
 // eventually accept all params: https://icl.bitbucket.io/slate/group__enum.html#gac97a2c5045464e6949b9a65a059b196a
 template<typename scalar_t>
@@ -239,6 +241,8 @@ int main(int argc, char* argv[])
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
         bool print = (mpi_rank == 0);
 
+        parse_args(argc, argv);
+
         // print input so running `test [input] > out.txt` documents input
         if (print) {
             char buf[100];
@@ -322,7 +326,7 @@ int main(int argc, char* argv[])
         return 0;
 }
 
-int run(int argc, char* argv[])
+int parse_args(int argc, char* argv[])
 {
   int ret;
 
