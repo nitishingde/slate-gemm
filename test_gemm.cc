@@ -21,17 +21,17 @@
 #undef PIN_MATRICES
 
 static int dim_n, dim_m, dim_k;
-static std::string origin;
+static std::string origin = "d";
 static int dnb = 128;
 static int lnb = 16;
-static std::string A_trans;
-static std::string B_trans;
+static std::string A_trans = "n";
+static std::string B_trans = "n";
 static bool is_int_t = false;
 static bool is_float_t = true;
 static bool is_double_t = false;
 static bool is_complex_float_t = false;
 static bool is_complex_double_t = false;
-static double alpha, beta;
+static double alpha = 1.0, beta = 0.0;
 
 int parse_args(int argc, char* argv[]);
 
