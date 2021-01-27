@@ -18,22 +18,20 @@
 #include <unistd.h>
 #include "utils.hh"
 
-#undef PIN_MATRICES
-
 static int dim_n, dim_m, dim_k;
 static std::string origin = "d";
-static int dnb = 128;
+static int dnb = 50;
 static int lnb = 16;
 static std::string A_trans = "n";
 static std::string B_trans = "n";
 static bool is_int_t = false;
-static bool is_float_t = true;
+static bool is_float_t = false;
 static bool is_double_t = false;
 static bool is_complex_float_t = false;
 static bool is_complex_double_t = false;
 static double alpha = 1.0, beta = 0.0;
 
-int parse_args(int argc, char* argv[]);
+void parse_args(int argc, char* argv[]);
 
 //------------------------------------------------------------------------------
 // eventually accept all params: https://icl.bitbucket.io/slate/group__enum.html#gac97a2c5045464e6949b9a65a059b196a
@@ -121,9 +119,9 @@ double test_gemm_work(Params& params)
 
     #ifdef PIN_MATRICES
     int cuerror;
-    cuerror = cudaHostRegister(&A_tst[0], (size_t)size_A*sizeof(scalar_t), cudaHostRegisterDefault);
-    cuerror = cudaHostRegister(&B_tst[0], (size_t)size_A*sizeof(scalar_t), cudaHostRegisterDefault);
-    cuerror = cudaHostRegister(&C_tst[0], (size_t)size_A*sizeof(scalar_t), cudaHostRegisterDefault);
+    cuerror = cudaHostRegister(&A_tst[0], (size_t)lldA*nlocA*sizeof(scalar_t), cudaHostRegisterDefault);
+    cuerror = cudaHostRegister(&B_tst[0], (size_t)lldB*nlocB*sizeof(scalar_t), cudaHostRegisterDefault);
+    cuerror = cudaHostRegister(&C_tst[0], (size_t)lldC*nlocC*sizeof(scalar_t), cudaHostRegisterDefault);
     #endif
 
     // if reference run is required, copy test data and create a descriptor for it
@@ -214,8 +212,6 @@ double test_gemm_work(Params& params)
 	    double time_tst = get_wtime() - time;
 	    gflops = gflop / time_tst;
     }
-
-    
 
     #ifdef PIN_MATRICES
     cuerror = cudaHostUnregister(&A_tst[0]);
@@ -335,7 +331,7 @@ int main(int argc, char* argv[])
         return 0;
 }
 
-int parse_args(int argc, char* argv[])
+void parse_args(int argc, char* argv[])
 {
   int ret;
 
@@ -343,13 +339,13 @@ int parse_args(int argc, char* argv[])
   {
     switch (ret) {
     case 'm':
-      dim_m = atol(optarg);
+      dim_m = atoi(optarg);
       break;
     case 'n':
-      dim_n = atol(optarg);
+      dim_n = atoi(optarg);
       break;
     case 'k':
-      dim_k = atol(optarg);
+      dim_k = atoi(optarg);
       break;
     case 'a':
       alpha = atof(optarg);
