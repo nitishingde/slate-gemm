@@ -20,7 +20,8 @@
 
 static int dim_n, dim_m, dim_k;
 static std::string origin = "d";
-static int dnb = 50;
+static int dnb = 512;
+// TODO FIXME make use of local block size
 static int lnb = 16;
 static std::string A_trans = "n";
 static std::string B_trans = "n";
@@ -53,7 +54,7 @@ double test_gemm_work(Params& params)
     int64_t p = params.p;
     int64_t q = params.q;
     // TODO option to customize these parameters
-    int64_t lookahead = 0;
+    int64_t lookahead = 1;
     bool ref_only = false;
     slate::Norm norm = slate::Norm::One;
     bool check = false;
@@ -194,7 +195,7 @@ double test_gemm_work(Params& params)
 	    //==================================================
 	    slate::multiply(
 			    alpha, A, B, beta, C, {
-			    {slate::Option::Lookahead, 0},
+			    {slate::Option::Lookahead, lookahead},
 			    {slate::Option::Target, target}
 			    });
 
@@ -273,7 +274,7 @@ int main(int argc, char* argv[])
         }
 
         // save passed params
-        Params params({dim_m, dim_n, dim_k}, nb, origin);
+        Params params({dim_m, dim_n, dim_k}, dnb, origin);
 
         // Make default p x q grid as square as possible.
         // Worst case is p=1, q=mpi_size.
