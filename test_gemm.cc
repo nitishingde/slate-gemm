@@ -14,9 +14,28 @@
 #include <cstdio>
 #include <cstdlib>
 #include <utility>
+#include <numeric>
 
 #include <unistd.h>
 #include "utils.hh"
+
+// #define NAME(x) #x
+
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_GREEN   "\x1b[32m"
+#define ANSI_COLOR_YELLOW  "\x1b[33m"
+#define ANSI_COLOR_BLUE    "\x1b[34m"
+#define ANSI_COLOR_MAGENTA "\x1b[35m"
+#define ANSI_COLOR_CYAN    "\x1b[36m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
+#define ANSI_CLEAR_LINE    "\33[2K"
+
+#define RED(x) ANSI_COLOR_RED x ANSI_COLOR_RESET
+#define GREEN(x) ANSI_COLOR_GREEN x ANSI_COLOR_RESET
+#define YELLOW(x) ANSI_COLOR_YELLOW x ANSI_COLOR_RESET
+#define BLUE(x) ANSI_COLOR_BLUE x ANSI_COLOR_RESET
+#define MAGENTA(x) ANSI_COLOR_MAGENTA x ANSI_COLOR_RESET
+#define CYAN(x) ANSI_COLOR_CYAN x ANSI_COLOR_RESET
 
 static int dim_n, dim_m, dim_k;
 static std::string origin = "d";
@@ -31,6 +50,8 @@ static bool is_double_t = false;
 static bool is_complex_float_t = false;
 static bool is_complex_double_t = false;
 static double alpha = 1.0, beta = 0.0;
+constexpr int ITERS = 10;
+std::vector<double> gflops_iters, time_iters;
 
 void parse_args(int argc, char* argv[]);
 
@@ -212,6 +233,8 @@ double test_gemm_work(Params& params)
 	    // compute and save timing/performance
 	    double time_tst = get_wtime() - time;
 	    gflops = gflop / time_tst;
+      gflops_iters.emplace_back(gflops);
+      time_iters.emplace_back(time_tst);
     }
 
     #ifdef PIN_MATRICES
@@ -245,7 +268,7 @@ int main(int argc, char* argv[])
         parse_args(argc, argv);
 
         // print input so running `test [input] > out.txt` documents input
-        if (print) {
+        if (true) {
             char buf[100];
             std::string args = buf;
 
@@ -290,32 +313,47 @@ int main(int argc, char* argv[])
         params.alpha = alpha;
         params.beta = beta;
         double gflops;
- 
-        if (is_float_t) {
-            params.type = slate::Type::FLOAT;
-            gflops = test_gemm_work<float>(params);
-        }
-        else if (is_double_t) {
-            params.type = slate::Type::DOUBLE;
-            gflops = test_gemm_work<double>(params);
-        }
-        else if (is_complex_float_t) {
-            params.type = slate::Type::COMPLEX_FLOAT;
-            gflops = test_gemm_work<std::complex<float>>(params);
-        }
-        else if (is_complex_double_t) {
-            params.type = slate::Type::COMPLEX_DOUBLE;
-            gflops = test_gemm_work<std::complex<double>>(params);
-        }
-        else { 
-            params.type = slate::Type::DOUBLE;
-            gflops = test_gemm_work<double>(params);
-	}
 
-	double pe_gflops = 0.0;
-	MPI_Reduce(&gflops, &pe_gflops, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-	if (print)
-		std::cout << "GFlops: " << pe_gflops << std::endl;
+        // printf("[Process %d] m = %d, n = %d, k = %d, tile = %d, p, q = (%d, %d), alpha = %f, beta = %f\n", mpi_rank, params.dims[0], params.dims[1], params.dims[2], params.dnb, params.p, params.q, params.alpha, params.beta);
+
+        for(int iter = 0; iter < ITERS; ++iter) {
+          if (is_float_t) {
+              fflush(stdout);
+              params.type = slate::Type::FLOAT;
+              gflops = test_gemm_work<float>(params);
+          }
+          else if (is_double_t) {
+              params.type = slate::Type::DOUBLE;
+              gflops = test_gemm_work<double>(params);
+          }
+          else if (is_complex_float_t) {
+              params.type = slate::Type::COMPLEX_FLOAT;
+              gflops = test_gemm_work<std::complex<float>>(params);
+          }
+          else if (is_complex_double_t) {
+              params.type = slate::Type::COMPLEX_DOUBLE;
+              gflops = test_gemm_work<std::complex<double>>(params);
+          }
+          else { 
+              params.type = slate::Type::DOUBLE;
+              gflops = test_gemm_work<double>(params);
+          }
+        }
+
+        if(print) {
+            printf(
+                "[ Iterations " YELLOW("%d") " ][ " MAGENTA("SLATE::multiply") " ][ M, N, K, T, p, q = (" MAGENTA("%d, %d, %d, %d, %d, %d") ") ][ Max " GREEN("%9.3f") " gflops ][ Avg " CYAN("%9.3f") " gflops ][ Min " RED("%9.3f") " gflops ][ Min " GREEN("%8.3f") " secs ][ Avg " CYAN("%8.3f") " secs ][ Max " RED("%8.3f") " secs ]\n",
+                gflops_iters.size(),
+                dim_m, dim_n, dim_k, dnb, params.p, params.q,
+                *std::max_element(gflops_iters.begin(), gflops_iters.end()),
+                std::accumulate(gflops_iters.begin(), gflops_iters.end(), 0.0)/double(gflops_iters.size()),
+                *std::min_element(gflops_iters.begin(), gflops_iters.end()),
+                *std::min_element(time_iters.begin(), time_iters.end()),
+                std::accumulate(time_iters.begin(), time_iters.end(), 0.0)/double(time_iters.size()),
+                *std::max_element(time_iters.begin(), time_iters.end())
+            );
+            fflush(stdout);
+        }
     }
     catch (const std::exception& ex) {
         msg = ex.what();
