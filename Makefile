@@ -1,13 +1,17 @@
 # Follow: https://bitbucket.org/icl/slate/wiki/machines/summit.md
 CXX = mpicxx
-SLATE_TOP = $(HOME)/builds/slate
-CUDA_TOP = $(OLCF_CUDA_ROOT)
-ESSL_TOP = $(OLCF_ESSL_ROOT)
-SCL_LIB = /autofs/nccs-svm1_sw/summit/.swci/1-compute/opt/spack/20180914/linux-rhel7-ppc64le/gcc-8.1.1/netlib-scalapack-2.0.2-7x3lv7z2lzfbe5kfwlt2aajkx4hvmgdm/lib
+SLATE_TOP = $(PWD)/slate/opt
+
+# FIXME: set path to cuda root dir @tim
+CUDA_TOP = /home/sci/nitish/.local/cuda-11.7
+
+# FIXME: set path to intel mkl root dir @tim
+SCL_LIB = /home/sci/nitish/intel/oneapi/mkl/2022.0.2/lib/intel64
+
 OPTFLAGS = -O3 -fopenmp 
 SNTFLAGS = -std=c++11 -fopenmp -fsanitize=address -O1 -fno-omit-frame-pointer
-CXXFLAGS = -std=c++11 -g $(OPTFLAGS) -I. -I$(SLATE_TOP)/include -DPIN_MATRICES
-LDFLAGS = -L$(CUDA_TOP)/lib64 -lcublas -lcuda -lcudart -L$(SCL_LIB) -lscalapack -L$(ESSL_TOP)/lib64 -lessl -Wl,-rpath=$(SLATE_TOP)/lib64 -L$(SLATE_TOP)/lib64 -lblaspp -llapackpp -lslate
+CXXFLAGS = -std=c++11 -g $(OPTFLAGS) -I. -I$(SLATE_TOP)/include -DPIN_MATRICES -I$(CUDA_TOP)/include
+LDFLAGS = -L$(CUDA_TOP)/lib64 -lcublas -lcuda -lcudart -lcusolver -L$(SCL_LIB) -lslate_scalapack_api -lmkl_scalapack_lp64 -lmkl_blacs_openmpi_lp64 -Wl,--copy-dt-needed-entries,-rpath=$(SLATE_TOP)/lib64 -L$(SLATE_TOP)/lib64 -lblaspp -llapackpp -lslate
 
 OBJ = test_gemm.o
 TARGET = test_gemm
