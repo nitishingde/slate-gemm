@@ -25,8 +25,12 @@ if [[ ! -d slate/opt ]]; then
     target_link_libraries( slate_scalapack_api PUBLIC mkl_scalapack_lp64 )' >> ./slate/CMakeLists.txt
 fi
 
+# initialize all the submodules in slate repository
+cd slate/
+git submodule update --init
+
 # build and install SLATE
-cd slate/build
+cd build/
 
 # FIXME: update the MKLROOT variable @tim
 export MKLROOT=/home/sci/nitish/intel/oneapi/mkl/2022.0.2
